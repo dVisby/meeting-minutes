@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -9,6 +8,13 @@ import { revalidatePath } from "next/cache";
  * same endpoints — these actions never touch the database directly.
  */
 function apiBaseUrl() {
+  // These actions call our own API routes in the same server process, so
+  // they should always hit it directly. APP_URL is reserved for the public
+  // address Deepgram's webhook calls back to — in local dev that's an https
+  // tunnel, which has no uptime guarantee and shouldn't be on the hot path
+  // for in-app requests (a flaky tunnel would otherwise silently fail
+  // actions like mapping a speaker name).
+  if (process.env.NODE_ENV !== "production") return "http://localhost:3000";
   return process.env.APP_URL ?? "http://localhost:3000";
 }
 
@@ -22,33 +28,6 @@ async function apiFetch(path: string, init?: RequestInit) {
     throw new Error(body.error ?? `Request to ${path} failed with ${res.status}`);
   }
   return res.json();
-}
-
-export async function createMeetingAction(formData: FormData) {
-  const title = String(formData.get("title") ?? "").trim();
-  const meetingDate = String(formData.get("meetingDate") ?? "").trim();
-  const file = formData.get("file");
-
-  if (!title) throw new Error("Toplantı başlığı gerekli.");
-  if (!(file instanceof File) || file.size === 0) throw new Error("Bir ses dosyası seçin.");
-
-  const { meeting } = await apiFetch("/api/meetings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, meetingDate: meetingDate || null }),
-  });
-
-  const uploadForm = new FormData();
-  uploadForm.set("file", file);
-  await apiFetch(`/api/meetings/${meeting.id}/audio`, {
-    method: "POST",
-    body: uploadForm,
-  });
-
-  await apiFetch(`/api/meetings/${meeting.id}/process`, { method: "POST" });
-
-  revalidatePath("/");
-  redirect(`/meetings/${meeting.id}`);
 }
 
 export async function mapSpeakerAction(meetingId: string, speakerLabel: string, name: string) {

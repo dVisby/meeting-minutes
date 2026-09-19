@@ -20,18 +20,33 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
+    // Deepgram retries the callback if it doesn't get a timely response (our
+    // handler can take a while due to the Claude summarization call below),
+    // and "Yeniden Dene" re-runs this same flow for a meeting that was
+    // already processed once. `transcripts`/`minutes` are unique per meeting,
+    // so upsert them and replace the rows that depend on them instead of
+    // inserting blindly, which previously failed with a duplicate-key error.
     const { data: transcript, error: transcriptError } = await supabase
       .from("transcripts")
-      .insert({
-        meeting_id: meetingId,
-        provider: "deepgram",
-        raw_response: payload,
-        language: payload.metadata?.language ?? null,
-        duration_seconds: payload.metadata?.duration ?? null,
-      })
+      .upsert(
+        {
+          meeting_id: meetingId,
+          provider: "deepgram",
+          raw_response: payload,
+          language: payload.metadata?.language ?? null,
+          duration_seconds: payload.metadata?.duration ?? null,
+        },
+        { onConflict: "meeting_id" }
+      )
       .select()
       .single();
     if (transcriptError) throw new Error(transcriptError.message);
+
+    const { error: deleteUtterancesError } = await supabase
+      .from("utterances")
+      .delete()
+      .eq("meeting_id", meetingId);
+    if (deleteUtterancesError) throw new Error(deleteUtterancesError.message);
 
     const mappedUtterances = mapDeepgramUtterances(payload);
     if (mappedUtterances.length > 0) {
@@ -53,15 +68,24 @@ export async function POST(request: NextRequest) {
     const transcriptText = concatenateUtterances(mappedUtterances);
     const generated = await generateMinutes(transcriptText);
 
-    const { error: minutesError } = await supabase.from("minutes").insert({
-      meeting_id: meetingId,
-      agenda: generated.agenda,
-      discussion: generated.discussionTopics,
-      decisions: generated.decisions,
-      next_meeting: generated.nextMeeting,
-      generated_by: "claude-sonnet-5",
-    });
+    const { error: minutesError } = await supabase.from("minutes").upsert(
+      {
+        meeting_id: meetingId,
+        agenda: generated.agenda,
+        discussion: generated.discussionTopics,
+        decisions: generated.decisions,
+        next_meeting: generated.nextMeeting,
+        generated_by: "claude-sonnet-5",
+      },
+      { onConflict: "meeting_id" }
+    );
     if (minutesError) throw new Error(minutesError.message);
+
+    const { error: deleteActionItemsError } = await supabase
+      .from("action_items")
+      .delete()
+      .eq("meeting_id", meetingId);
+    if (deleteActionItemsError) throw new Error(deleteActionItemsError.message);
 
     if (generated.actionItems.length > 0) {
       const { error: actionItemsError } = await supabase.from("action_items").insert(
@@ -75,6 +99,15 @@ export async function POST(request: NextRequest) {
       );
       if (actionItemsError) throw new Error(actionItemsError.message);
     }
+
+    // Only replace the AI-guessed participant names (speaker_label is null);
+    // rows the user manually mapped to a Deepgram speaker label are kept.
+    const { error: deleteParticipantsError } = await supabase
+      .from("participants")
+      .delete()
+      .eq("meeting_id", meetingId)
+      .is("speaker_label", null);
+    if (deleteParticipantsError) throw new Error(deleteParticipantsError.message);
 
     if (generated.participants.length > 0) {
       const { error: participantsError } = await supabase.from("participants").insert(

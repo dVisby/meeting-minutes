@@ -8,7 +8,7 @@ export function toVtt(utterances: ExportUtterance[]): string {
     .map((u) => {
       const start = formatVttTime(u.start_time);
       const end = formatVttTime(u.end_time);
-      return `${start} --> ${end}\n[Konuşmacı ${u.speaker_label}] ${u.text}`;
+      return `${start} --> ${end}\n[${u.speaker_name}] ${u.text}`;
     })
     .join("\n\n");
 

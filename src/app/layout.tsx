@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meeting Minutes",
+  title: "Recapp",
   description: "AI destekli toplantı kaydedici/özetleyici",
 };
 

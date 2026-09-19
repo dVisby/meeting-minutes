@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { mapSpeakerAction, createClipAction } from "@/lib/actions/meetings";
+import { buildSpeakerNameMap, resolveSpeakerName } from "@/shared/speaker-name";
 
 interface Utterance {
   id: string;
@@ -38,14 +39,9 @@ export function TranscriptView({
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
   const [clipStart, setClipStart] = useState("");
   const [clipEnd, setClipEnd] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const speakerNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of participants) {
-      if (p.speaker_label) map.set(p.speaker_label, p.name);
-    }
-    return map;
-  }, [participants]);
+  const speakerNames = useMemo(() => buildSpeakerNameMap(participants), [participants]);
 
   const uniqueSpeakers = useMemo(
     () => Array.from(new Set(utterances.map((u) => u.speaker_label))),
@@ -53,14 +49,19 @@ export function TranscriptView({
   );
 
   function displayName(speakerLabel: string) {
-    return speakerNames.get(speakerLabel) ?? `Konuşmacı ${speakerLabel}`;
+    return resolveSpeakerName(speakerLabel, speakerNames);
   }
 
   function handleMapSpeaker(speakerLabel: string) {
     const name = nameDrafts[speakerLabel]?.trim();
     if (!name) return;
-    startTransition(() => {
-      mapSpeakerAction(meetingId, speakerLabel, name);
+    setError(null);
+    startTransition(async () => {
+      try {
+        await mapSpeakerAction(meetingId, speakerLabel, name);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "İsim kaydedilemedi.");
+      }
     });
   }
 
@@ -68,15 +69,25 @@ export function TranscriptView({
     const start = Number(clipStart);
     const end = Number(clipEnd);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
-    startTransition(() => {
-      createClipAction(meetingId, start, end);
-      setClipStart("");
-      setClipEnd("");
+    setError(null);
+    startTransition(async () => {
+      try {
+        await createClipAction(meetingId, start, end);
+        setClipStart("");
+        setClipEnd("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Klip oluşturulamadı.");
+      }
     });
+  }
+
+  if (utterances.length === 0) {
+    return <p className="text-muted-foreground text-sm">Transkript henüz hazır değil.</p>;
   }
 
   return (
     <div className="space-y-6">
+      {error && <p className="text-destructive text-sm">{error}</p>}
       <div>
         <h3 className="mb-2 text-sm font-medium">Konuşmacı eşleme</h3>
         <div className="flex flex-wrap gap-2">

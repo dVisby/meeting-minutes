@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { confirmAudioUploadRequestSchema } from "@/shared/schemas";
+import { createAudioUploadTarget } from "@/lib/storage/audio";
+import { createAudioUploadUrlRequestSchema } from "@/shared/schemas";
 import { jsonError, notFound } from "@/lib/api-response";
 
 export const runtime = "nodejs";
 
 /**
- * Called once the browser has finished uploading the file straight to
- * Supabase Storage (see `audio/upload-url`); this just records where it
- * landed. It never sees the file bytes.
+ * Returns a signed URL the browser can PUT the audio file to directly, so
+ * the upload never has to be relayed through this server.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,21 +23,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!meeting) return notFound("Meeting");
 
   const body = await request.json().catch(() => null);
-  const parsed = confirmAudioUploadRequestSchema.safeParse(body);
+  const parsed = createAudioUploadUrlRequestSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(parsed.error.issues.map((i) => i.message).join(", "));
   }
-  if (!parsed.data.path.startsWith(`${id}/`)) {
-    return jsonError("Path does not belong to this meeting.");
+
+  try {
+    const target = await createAudioUploadTarget(id, parsed.data.fileName);
+    return NextResponse.json(target);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create upload URL.";
+    return jsonError(message, 502);
   }
-
-  const { data: updated, error: updateError } = await supabase
-    .from("meetings")
-    .update({ audio_path: parsed.data.path, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (updateError) return jsonError(updateError.message, 500);
-  return NextResponse.json({ meeting: updated });
 }

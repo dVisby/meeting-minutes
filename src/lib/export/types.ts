@@ -1,5 +1,6 @@
 export interface ExportUtterance {
   speaker_label: string;
+  speaker_name: string;
   start_time: number;
   end_time: number;
   text: string;

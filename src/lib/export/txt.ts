@@ -4,6 +4,6 @@ export function toTxt(utterances: ExportUtterance[]): string {
   return utterances
     .slice()
     .sort((a, b) => a.sequence - b.sequence)
-    .map((u) => `[Konuşmacı ${u.speaker_label}] ${u.text}`)
+    .map((u) => `[${u.speaker_name}] ${u.text}`)
     .join("\n");
 }

@@ -9,7 +9,7 @@ export function toSrt(utterances: ExportUtterance[]): string {
       const index1Based = index + 1;
       const start = formatSrtTime(u.start_time);
       const end = formatSrtTime(u.end_time);
-      return `${index1Based}\n${start} --> ${end}\n[Konuşmacı ${u.speaker_label}] ${u.text}\n`;
+      return `${index1Based}\n${start} --> ${end}\n[${u.speaker_name}] ${u.text}\n`;
     })
     .join("\n");
 }

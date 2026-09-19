@@ -9,15 +9,20 @@ export function audioPathFor(meetingId: string, fileName: string) {
   return `${meetingId}/${Date.now()}-${safeName}`;
 }
 
-export async function uploadMeetingAudio(path: string, file: Blob, contentType: string) {
+/**
+ * Returns a short-lived signed URL the browser can upload the audio file to
+ * directly, bypassing our server entirely so large files don't have to pass
+ * through a Next.js function twice (and so the browser gets real upload
+ * progress instead of hanging on one opaque request).
+ */
+export async function createAudioUploadTarget(meetingId: string, fileName: string) {
+  const path = audioPathFor(meetingId, fileName);
   const supabase = createServiceClient();
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType,
-    upsert: false,
-  });
-  if (error) {
-    throw new Error(`Failed to upload audio: ${error.message}`);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error || !data) {
+    throw new Error(`Failed to create signed upload URL: ${error?.message}`);
   }
+  return { path, signedUrl: data.signedUrl, token: data.token };
 }
 
 /** Deepgram's prerecorded API fetches audio by URL, so we hand it a short-lived signed URL. */

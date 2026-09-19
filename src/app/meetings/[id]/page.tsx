@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/status-badge";
+import { MeetingStatusIndicator } from "@/components/meetings/meeting-status-indicator";
 import { MinutesView } from "@/components/minutes-view";
 import { ActionItemsTable } from "@/components/action-items-table";
 import { TranscriptView } from "@/components/transcript-view";
@@ -42,7 +42,7 @@ export default async function MeetingDetailPage({
           <p className="text-muted-foreground text-sm">{meeting.meeting_date ?? "Tarih yok"}</p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusBadge status={meeting.status} />
+          <MeetingStatusIndicator status={meeting.status} />
           {meeting.status === "failed" && (
             <form action={reprocess}>
               <Button size="sm" variant="outline" type="submit">

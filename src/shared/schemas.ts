@@ -71,6 +71,16 @@ export const createMeetingRequestSchema = z.object({
 });
 export type CreateMeetingRequest = z.infer<typeof createMeetingRequestSchema>;
 
+export const createAudioUploadUrlRequestSchema = z.object({
+  fileName: z.string().min(1),
+});
+export type CreateAudioUploadUrlRequest = z.infer<typeof createAudioUploadUrlRequestSchema>;
+
+export const confirmAudioUploadRequestSchema = z.object({
+  path: z.string().min(1),
+});
+export type ConfirmAudioUploadRequest = z.infer<typeof confirmAudioUploadRequestSchema>;
+
 export const createClipRequestSchema = z
   .object({
     startTime: z.number().nonnegative(),

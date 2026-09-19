@@ -1,4 +1,4 @@
-# Meeting Minutes
+# Recapp
 
 AI destekli toplantı kaydedici/özetleyici — toplantı ses kaydını yükleyin, konuşmacı bazlı ve zaman damgalı transkripti alın, Claude ile otomatik olarak yapılandırılmış toplantı notları (gündem, görüşülen konular, kararlar, aksiyonlar) üretilsin.
 

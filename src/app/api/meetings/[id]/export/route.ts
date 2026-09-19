@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { exportFormatSchema } from "@/shared/schemas";
+import { buildSpeakerNameMap, resolveSpeakerName } from "@/shared/speaker-name";
 import { toTxt } from "@/lib/export/txt";
 import { toSrt } from "@/lib/export/srt";
 import { toVtt } from "@/lib/export/vtt";
@@ -24,17 +25,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const format = parsedFormat.data;
 
   const supabase = createServiceClient();
-  const [meetingRes, utterancesRes, minutesRes, actionItemsRes] = await Promise.all([
+  const [meetingRes, utterancesRes, minutesRes, actionItemsRes, participantsRes] = await Promise.all([
     supabase.from("meetings").select("title, meeting_date").eq("id", id).maybeSingle(),
     supabase.from("utterances").select("*").eq("meeting_id", id).order("sequence"),
     supabase.from("minutes").select("*").eq("meeting_id", id).maybeSingle(),
     supabase.from("action_items").select("*").eq("meeting_id", id),
+    supabase.from("participants").select("speaker_label, name").eq("meeting_id", id),
   ]);
 
   if (meetingRes.error) return jsonError(meetingRes.error.message, 500);
   if (!meetingRes.data) return notFound("Meeting");
 
-  const utterances = utterancesRes.data ?? [];
+  const speakerNames = buildSpeakerNameMap(participantsRes.data ?? []);
+  const utterances = (utterancesRes.data ?? []).map((u) => ({
+    ...u,
+    speaker_name: resolveSpeakerName(u.speaker_label, speakerNames),
+  }));
   let body: string;
 
   switch (format) {
