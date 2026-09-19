@@ -18,6 +18,7 @@ interface Utterance {
 interface Participant {
   speaker_label: string | null;
   name: string;
+  source: string;
 }
 
 function formatTimestamp(seconds: number) {
@@ -36,12 +37,26 @@ export function TranscriptView({
   participants: Participant[];
 }) {
   const [isPending, startTransition] = useTransition();
-  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+  // Pre-fills the mapping inputs with Claude's speaker-name guesses (source
+  // "ai_suggested") so confirming a name is a one-click edit-or-accept
+  // instead of typing it from scratch; a manually confirmed name never gets
+  // overwritten here since finalizeTranscript never touches "manual" rows.
+  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      participants
+        .filter((p): p is Participant & { speaker_label: string } => Boolean(p.speaker_label))
+        .map((p) => [p.speaker_label, p.name])
+    )
+  );
   const [clipStart, setClipStart] = useState("");
   const [clipEnd, setClipEnd] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const speakerNames = useMemo(() => buildSpeakerNameMap(participants), [participants]);
+  const suggestedLabels = useMemo(
+    () => new Set(participants.filter((p) => p.speaker_label && p.source === "ai_suggested").map((p) => p.speaker_label)),
+    [participants]
+  );
 
   const uniqueSpeakers = useMemo(
     () => Array.from(new Set(utterances.map((u) => u.speaker_label))),
@@ -93,7 +108,13 @@ export function TranscriptView({
         <div className="flex flex-wrap gap-2">
           {uniqueSpeakers.map((label) => (
             <div key={label} className="flex items-center gap-2">
-              <span className="text-muted-foreground text-sm">{displayName(label)}:</span>
+              <span className="text-muted-foreground text-sm">
+                {displayName(label)}
+                {suggestedLabels.has(label) && (
+                  <span className="text-primary ml-1 text-xs">(AI önerisi, onaylayın)</span>
+                )}
+                :
+              </span>
               <Input
                 className="h-8 w-32"
                 placeholder="İsim"

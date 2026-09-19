@@ -18,6 +18,8 @@ export interface Database {
           audio_path: string | null;
           status: string;
           error_message: string | null;
+          transcription_model: string;
+          transcription_job_ref: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -30,6 +32,8 @@ export interface Database {
           audio_path?: string | null;
           status?: string;
           error_message?: string | null;
+          transcription_model?: string;
+          transcription_job_ref?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -41,12 +45,14 @@ export interface Database {
           meeting_id: string;
           name: string;
           speaker_label: string | null;
+          source: string;
         };
         Insert: {
           id?: string;
           meeting_id: string;
           name: string;
           speaker_label?: string | null;
+          source?: string;
         };
         Update: Partial<Database["public"]["Tables"]["participants"]["Insert"]>;
       };

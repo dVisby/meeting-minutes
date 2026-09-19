@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       title: parsed.data.title,
       meeting_date: parsed.data.meetingDate ?? null,
       audio_source: parsed.data.audioSource,
+      transcription_model: parsed.data.transcriptionModel,
       status: "pending",
     })
     .select()

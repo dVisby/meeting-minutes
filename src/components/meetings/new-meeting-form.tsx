@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { transcriptionModelOptions, type TranscriptionModel } from "@/shared/schemas";
 
 type Stage = "idle" | "creating" | "uploading" | "starting" | "error";
 
@@ -66,8 +74,10 @@ export function NewMeetingForm() {
   const [stage, setStage] = useState<Stage>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModel>("nova-3");
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const busy = stage === "creating" || stage === "uploading" || stage === "starting";
+  const selectedModelOption = transcriptionModelOptions.find((o) => o.value === transcriptionModel);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -81,11 +91,21 @@ export function NewMeetingForm() {
     if (!title) return setError("Toplantı başlığı gerekli.");
     if (!(file instanceof File) || file.size === 0) return setError("Bir ses dosyası seçin.");
 
+    if (selectedModelOption?.maxFileSizeMB) {
+      const maxBytes = selectedModelOption.maxFileSizeMB * 1024 * 1024;
+      if (file.size > maxBytes) {
+        return setError(
+          `${selectedModelOption.label} en fazla ${selectedModelOption.maxFileSizeMB}MB dosya kabul ediyor (seçilen dosya ${(file.size / (1024 * 1024)).toFixed(1)}MB). Daha küçük bir dosya seçin veya başka bir model kullanın.`
+        );
+      }
+    }
+
     try {
       setStage("creating");
       const { meeting } = await postJson<{ meeting: { id: string } }>("/api/meetings", {
         title,
         meetingDate: meetingDate || null,
+        transcriptionModel,
       });
 
       setStage("uploading");
@@ -128,6 +148,40 @@ export function NewMeetingForm() {
       <div className="space-y-2">
         <Label htmlFor="meetingDate">Tarih</Label>
         <Input id="meetingDate" name="meetingDate" type="date" disabled={busy} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="transcriptionModel">Dikte modeli</Label>
+        <Select
+          value={transcriptionModel}
+          onValueChange={(value) => setTranscriptionModel(value as TranscriptionModel)}
+          disabled={busy}
+        >
+          <SelectTrigger id="transcriptionModel" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {transcriptionModelOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedModelOption && (
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-xs">{selectedModelOption.description}</p>
+            {selectedModelOption.maxFileSizeMB && (
+              <p className="text-muted-foreground text-xs">
+                Dosya boyutu sınırı: {selectedModelOption.maxFileSizeMB}MB.
+              </p>
+            )}
+            {selectedModelOption.warning && (
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+                {selectedModelOption.warning}
+              </p>
+            )}
+          </div>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="file">Ses dosyası (mp3, m4a, wav, aac, ogg, opus, webm, 3gp, amr, flac)</Label>

@@ -20,14 +20,18 @@ function getDeepgramClient() {
  * POSTs the full result to `callbackUrl` once processing finishes — the caller
  * does not block on transcription completing.
  */
-export async function startTranscription(args: { audioUrl: string; callbackUrl: string }) {
+export async function startTranscription(args: {
+  audioUrl: string;
+  callbackUrl: string;
+  model?: string;
+}) {
   const deepgram = getDeepgramClient();
   const result = await deepgram.listen.v1.media.transcribeUrl({
     url: args.audioUrl,
     // callback defaults to POST; passing callback_method explicitly (even "POST")
     // currently makes Deepgram's API reject the request with "Invalid query string."
     callback: args.callbackUrl,
-    model: "nova-2",
+    model: args.model ?? "nova-3",
     language: process.env.DEEPGRAM_LANGUAGE ?? "tr",
     diarize: true,
     utterances: true,

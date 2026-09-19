@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (existing) {
     const { data, error } = await supabase
       .from("participants")
-      .update({ name })
+      .update({ name, source: "manual" })
       .eq("id", existing.id)
       .select()
       .single();
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data, error } = await supabase
     .from("participants")
-    .insert({ meeting_id: id, name, speaker_label: speakerLabel })
+    .insert({ meeting_id: id, name, speaker_label: speakerLabel, source: "manual" })
     .select()
     .single();
   if (error) return jsonError(error.message, 500);

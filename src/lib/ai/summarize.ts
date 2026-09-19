@@ -7,7 +7,11 @@ const SYSTEM_PROMPT = `Sen bir toplantı asistanısın. Sana konuşmacı etiketl
 işaretlenmiş bir toplantı transkripti verilecek. Görevin bu transkripti Türkçe toplantı notu \
 şablonuna uygun, yapılandırılmış bir özet haline getirmek. Katılımcı isimlerini yalnızca \
 transkriptte açıkça geçiyorsa kullan; geçmiyorsa konuşmacı etiketlerini olduğu gibi bırak. \
-Uydurma bilgi ekleme; transkriptte olmayan bir karar veya aksiyon üretme.`;
+Uydurma bilgi ekleme; transkriptte olmayan bir karar veya aksiyon üretme.
+
+Ayrıca transkriptte geçen HER "Konuşmacı N" etiketi için, o kişinin gerçek adını tahmin etmeye \
+çalış: kendini tanıtma ("Ben Ahmet, başlayayım"), birinin adıyla hitap edilmesi ("Mehmet, sence?") \
+gibi ipuçlarına bak. Böyle bir ipucu yoksa suggestedName'i null bırak — asla isim uydurma.`;
 
 export async function generateMinutes(transcriptText: string): Promise<MinutesGeneration> {
   const result = await generateText({
