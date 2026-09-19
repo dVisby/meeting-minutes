@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { checkAzureMeetingStatus } from "@/lib/ai/check-azure-status";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MeetingStatusIndicator } from "@/components/meetings/meeting-status-indicator";
@@ -31,6 +33,15 @@ export default async function MeetingDetailPage({
 
   if (!meetingRes.data) notFound();
   const meeting = meetingRes.data;
+
+  // Azure's batch API has no push callback (unlike Deepgram's webhook), so
+  // this page's every-4s auto-refresh (MeetingStatusIndicator) doubles as an
+  // on-demand status check — anyone watching the page gets a near-real-time
+  // result instead of waiting for the once-a-day cron (see poll-transcriptions).
+  if (meeting.status === "transcribing" && meeting.transcription_model === "azure-speech" && meeting.transcription_job_ref) {
+    const jobRef = meeting.transcription_job_ref;
+    after(() => checkAzureMeetingStatus(id, jobRef));
+  }
 
   const reprocess = reprocessMeetingAction.bind(null, id);
 

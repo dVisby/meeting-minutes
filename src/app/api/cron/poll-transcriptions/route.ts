@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { pollAzureTranscription } from "@/lib/ai/transcribe-azure";
-import { finalizeTranscript } from "@/lib/ai/finalize-transcript";
+import { checkAzureMeetingStatus } from "@/lib/ai/check-azure-status";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -30,30 +29,10 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const results = await Promise.allSettled(
-    (pending ?? []).map(async (meeting) => {
-      const jobRef = meeting.transcription_job_ref as string;
-      const result = await pollAzureTranscription(jobRef);
-
-      if (result.status === "running") return { id: meeting.id, status: "running" as const };
-
-      if (result.status === "failed") {
-        await supabase
-          .from("meetings")
-          .update({ status: "failed", error_message: result.error, updated_at: new Date().toISOString() })
-          .eq("id", meeting.id);
-        return { id: meeting.id, status: "failed" as const };
-      }
-
-      await finalizeTranscript({
-        meetingId: meeting.id,
-        provider: "azure",
-        language: result.language,
-        durationSeconds: result.durationSeconds,
-        rawResponse: result.rawResponse,
-        utterances: result.utterances,
-      });
-      return { id: meeting.id, status: "done" as const };
-    })
+    (pending ?? []).map(async (meeting) => ({
+      id: meeting.id,
+      status: await checkAzureMeetingStatus(meeting.id, meeting.transcription_job_ref as string),
+    }))
   );
 
   return NextResponse.json({
