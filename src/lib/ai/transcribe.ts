@@ -1,15 +1,18 @@
 import "server-only";
 import { DeepgramClient } from "@deepgram/sdk";
+import { getApiKey } from "@/lib/secrets";
 
 let client: DeepgramClient | undefined;
+let clientKey: string | undefined;
 
-function getDeepgramClient() {
-  if (!client) {
-    const apiKey = process.env.DEEPGRAM_API_KEY;
-    if (!apiKey) {
-      throw new Error("Missing DEEPGRAM_API_KEY environment variable.");
-    }
+async function getDeepgramClient() {
+  const apiKey = await getApiKey("DEEPGRAM_API_KEY");
+  // Cache is keyed on the resolved key too, so an admin updating it in the
+  // panel takes effect on the next call instead of sticking to the first
+  // key this process instance ever saw.
+  if (!client || clientKey !== apiKey) {
     client = new DeepgramClient({ apiKey });
+    clientKey = apiKey;
   }
   return client;
 }
@@ -25,7 +28,7 @@ export async function startTranscription(args: {
   callbackUrl: string;
   model?: string;
 }) {
-  const deepgram = getDeepgramClient();
+  const deepgram = await getDeepgramClient();
   const result = await deepgram.listen.v1.media.transcribeUrl({
     url: args.audioUrl,
     // callback defaults to POST; passing callback_method explicitly (even "POST")

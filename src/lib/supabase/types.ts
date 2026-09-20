@@ -169,6 +169,21 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["clips"]["Insert"]>;
       };
+      api_credentials: {
+        Row: {
+          key_name: string;
+          encrypted_value: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          key_name: string;
+          encrypted_value: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["api_credentials"]["Insert"]>;
+      };
     };
   };
 }

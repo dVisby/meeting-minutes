@@ -99,6 +99,13 @@ export const transcriptionModelOptions: TranscriptionModelOption[] = [
   },
 ];
 
+/** Short display label for a past meeting's model choice (strips "(önerilen)" etc.). */
+export function transcriptionModelLabel(value: string) {
+  const option = transcriptionModelOptions.find((o) => o.value === value);
+  if (!option) return value;
+  return option.label.replace(/\s*\([^)]*\)\s*$/, "");
+}
+
 export const actionItemStatusSchema = z.enum(["open", "in_progress", "done"]);
 export type ActionItemStatus = z.infer<typeof actionItemStatusSchema>;
 

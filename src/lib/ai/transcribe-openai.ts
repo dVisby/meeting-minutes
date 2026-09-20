@@ -1,7 +1,8 @@
 import "server-only";
 import { transcribe } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { fetchAudioWithSizeLimit } from "@/lib/ai/fetch-audio";
+import { getApiKey } from "@/lib/secrets";
 import type { MappedUtterance } from "@/lib/ai/diarize-map";
 
 const MAX_BYTES = 25 * 1024 * 1024; // OpenAI's hard limit for audio.transcriptions
@@ -18,6 +19,7 @@ export async function transcribeWithOpenAI(audioUrl: string): Promise<{
   durationSeconds: number | null;
 }> {
   const { data } = await fetchAudioWithSizeLimit(audioUrl, MAX_BYTES);
+  const openai = createOpenAI({ apiKey: await getApiKey("OPENAI_API_KEY") });
 
   const result = await transcribe({
     model: openai.transcription("whisper-1"),

@@ -36,3 +36,12 @@ export async function getSignedAudioUrl(path: string) {
   }
   return data.signedUrl;
 }
+
+/** Removes an uploaded audio file, e.g. when its meeting is deleted. */
+export async function deleteAudioFile(path: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  if (error) {
+    throw new Error(`Failed to delete audio file: ${error.message}`);
+  }
+}

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NewMeetingPage() {
   return (
-    <main className="mx-auto max-w-xl px-4 py-10">
+    <main className="mx-auto w-full max-w-xl px-4 py-10">
       <Card>
         <CardHeader>
           <CardTitle>Yeni Toplantı</CardTitle>

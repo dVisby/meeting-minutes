@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireUser } from "@/lib/supabase/server";
+import { isMeetingOwner } from "@/lib/meetings";
 import { createClipRequestSchema } from "@/shared/schemas";
 import { generateClipSummary } from "@/lib/ai/clip-summary";
-import { jsonError } from "@/lib/api-response";
+import { jsonError, notFound } from "@/lib/api-response";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireUser();
+  if (!(await isMeetingOwner(id, user.id))) return notFound("Meeting");
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("clips")
@@ -19,6 +22,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireUser();
+  if (!(await isMeetingOwner(id, user.id))) return notFound("Meeting");
   const body = await request.json().catch(() => null);
   const parsed = createClipRequestSchema.safeParse(body);
   if (!parsed.success) {

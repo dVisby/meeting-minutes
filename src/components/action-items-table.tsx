@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -9,6 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { updateActionItemStatusAction } from "@/lib/actions/meetings";
 
 type ActionItemStatus = "open" | "in_progress" | "done";
@@ -57,23 +65,34 @@ export function ActionItemsTable({
             <TableCell>{item.owner ?? "—"}</TableCell>
             <TableCell>{item.due_date ?? "—"}</TableCell>
             <TableCell>
-              <select
+              <Select
+                key={item.status}
                 defaultValue={item.status}
                 disabled={isPending}
-                onChange={(e) => {
-                  const status = e.target.value as ActionItemStatus;
-                  startTransition(() => {
-                    updateActionItemStatusAction(meetingId, item.id, status);
+                onValueChange={(value) => {
+                  const status = value as ActionItemStatus;
+                  const label = STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status;
+                  startTransition(async () => {
+                    try {
+                      await updateActionItemStatusAction(meetingId, item.id, status);
+                      toast.success(`Durum "${label}" olarak güncellendi.`);
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Durum güncellenemedi.");
+                    }
                   });
                 }}
-                className="border-input h-8 rounded-md border bg-transparent px-2 text-sm"
               >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger size="sm" className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </TableCell>
           </TableRow>
         ))}

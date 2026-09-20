@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireUser } from "@/lib/supabase/server";
+import { isMeetingOwner } from "@/lib/meetings";
 import { updateActionItemRequestSchema } from "@/shared/schemas";
 import { jsonError, notFound } from "@/lib/api-response";
 
@@ -8,6 +9,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const { id, itemId } = await params;
+  const user = await requireUser();
+  if (!(await isMeetingOwner(id, user.id))) return notFound("Meeting");
   const body = await request.json().catch(() => null);
   const parsed = updateActionItemRequestSchema.safeParse(body);
   if (!parsed.success) {

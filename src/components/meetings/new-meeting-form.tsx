@@ -22,6 +22,11 @@ const stageLabel: Record<Exclude<Stage, "idle" | "error">, string> = {
   starting: "Transkripsiyon başlatılıyor…",
 };
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 async function postJson<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
@@ -75,7 +80,10 @@ export function NewMeetingForm() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModel>("nova-3");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const busy = stage === "creating" || stage === "uploading" || stage === "starting";
   const selectedModelOption = transcriptionModelOptions.find((o) => o.value === transcriptionModel);
 
@@ -133,6 +141,27 @@ export function NewMeetingForm() {
     xhrRef.current?.abort();
   }
 
+  function setFile(file: File | null) {
+    if (fileInputRef.current) {
+      if (file) {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInputRef.current.files = dataTransfer.files;
+      } else {
+        fileInputRef.current.value = "";
+      }
+    }
+    setSelectedFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDragging(false);
+    if (busy) return;
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -185,14 +214,54 @@ export function NewMeetingForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="file">Ses dosyası (mp3, m4a, wav, aac, ogg, opus, webm, 3gp, amr, flac)</Label>
-        <Input
+        <input
+          ref={fileInputRef}
           id="file"
           name="file"
           type="file"
           disabled={busy}
           accept="audio/*,video/3gpp,video/3gpp2,.mp3,.m4a,.wav,.aac,.ogg,.oga,.opus,.webm,.3gp,.3gpp,.amr,.flac,.mp4,audio/x-m4a,audio/mp4,audio/amr,audio/3gpp,audio/flac,audio/webm,audio/opus"
           required
+          className="sr-only"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
+        <div
+          onClick={() => !busy && fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!busy) setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={`flex flex-col items-center justify-center gap-1 rounded-md border border-dashed px-4 py-6 text-center transition-colors ${
+            busy ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+          } ${isDragging ? "border-primary bg-primary/5" : "border-input hover:bg-muted/50"}`}
+        >
+          {selectedFile ? (
+            <>
+              <p className="text-sm font-medium">{selectedFile.name}</p>
+              <p className="text-muted-foreground text-xs">{formatFileSize(selectedFile.size)}</p>
+              {!busy && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFile(null);
+                  }}
+                >
+                  Kaldır
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm">Dosyayı sürükleyip bırakın veya seçmek için tıklayın</p>
+              <p className="text-muted-foreground text-xs">mp3, m4a, wav, aac, ogg, opus, webm, 3gp, amr, flac</p>
+            </>
+          )}
+        </div>
       </div>
 
       {stage === "uploading" && (

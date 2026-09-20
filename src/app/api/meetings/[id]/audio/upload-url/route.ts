@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireUser } from "@/lib/supabase/server";
 import { createAudioUploadTarget } from "@/lib/storage/audio";
 import { createAudioUploadUrlRequestSchema } from "@/shared/schemas";
 import { jsonError, notFound } from "@/lib/api-response";
@@ -12,12 +12,14 @@ export const runtime = "nodejs";
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireUser();
   const supabase = createServiceClient();
 
   const { data: meeting, error: meetingError } = await supabase
     .from("meetings")
     .select("id")
     .eq("id", id)
+    .eq("user_id", user.id)
     .maybeSingle();
   if (meetingError) return jsonError(meetingError.message, 500);
   if (!meeting) return notFound("Meeting");

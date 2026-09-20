@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 
-const LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   pending: "Bekliyor",
   transcribing: "Transkribe ediliyor",
   summarizing: "Özetleniyor",
@@ -17,5 +17,5 @@ const VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outlin
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={VARIANTS[status] ?? "outline"}>{LABELS[status] ?? status}</Badge>;
+  return <Badge variant={VARIANTS[status] ?? "outline"}>{STATUS_LABELS[status] ?? status}</Badge>;
 }

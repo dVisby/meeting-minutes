@@ -1,6 +1,7 @@
 import "server-only";
 import { generateText, Output } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { getApiKey } from "@/lib/secrets";
 import { minutesGenerationSchema, type MinutesGeneration } from "@/shared/schemas";
 
 const SYSTEM_PROMPT = `Sen bir toplantı asistanısın. Sana konuşmacı etiketleriyle (ör. "Konuşmacı 0") \
@@ -14,6 +15,7 @@ Ayrıca transkriptte geçen HER "Konuşmacı N" etiketi için, o kişinin gerçe
 gibi ipuçlarına bak. Böyle bir ipucu yoksa suggestedName'i null bırak — asla isim uydurma.`;
 
 export async function generateMinutes(transcriptText: string): Promise<MinutesGeneration> {
+  const anthropic = createAnthropic({ apiKey: await getApiKey("ANTHROPIC_API_KEY") });
   const result = await generateText({
     model: anthropic("claude-sonnet-5"),
     system: SYSTEM_PROMPT,

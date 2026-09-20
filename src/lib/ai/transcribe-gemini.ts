@@ -1,8 +1,9 @@
 import "server-only";
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 import { fetchAudioWithSizeLimit } from "@/lib/ai/fetch-audio";
+import { getApiKey } from "@/lib/secrets";
 import type { MappedUtterance } from "@/lib/ai/diarize-map";
 
 // Gemini's inline (base64) request payload is capped well below its Files
@@ -44,6 +45,7 @@ export async function transcribeWithGemini(audioUrl: string): Promise<{
   language: string | null;
 }> {
   const { data, mediaType } = await fetchAudioWithSizeLimit(audioUrl, MAX_BYTES);
+  const google = createGoogleGenerativeAI({ apiKey: await getApiKey("GOOGLE_GENERATIVE_AI_API_KEY") });
 
   const result = await generateObject({
     model: google("gemini-flash-latest"),

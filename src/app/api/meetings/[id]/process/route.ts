@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireUser } from "@/lib/supabase/server";
 import { getSignedAudioUrl } from "@/lib/storage/audio";
 import { startTranscription } from "@/lib/ai/transcribe";
 import { startAzureTranscription } from "@/lib/ai/transcribe-azure";
@@ -28,12 +28,14 @@ async function markFailed(meetingId: string, err: unknown) {
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireUser();
   const supabase = createServiceClient();
 
   const { data: meeting, error: meetingError } = await supabase
     .from("meetings")
     .select("id, audio_path, status, transcription_model")
     .eq("id", id)
+    .eq("user_id", user.id)
     .maybeSingle();
   if (meetingError) return jsonError(meetingError.message, 500);
   if (!meeting) return notFound("Meeting");

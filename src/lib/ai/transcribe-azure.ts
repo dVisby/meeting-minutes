@@ -1,4 +1,5 @@
 import "server-only";
+import { getApiKey } from "@/lib/secrets";
 import type { MappedUtterance } from "@/lib/ai/diarize-map";
 
 // v3.2's path-versioned API (not the newer `?api-version=2024-11-15` scheme)
@@ -6,12 +7,11 @@ import type { MappedUtterance } from "@/lib/ai/diarize-map";
 // host without a custom-subdomain resource endpoint.
 const API_BASE = "speechtotext/v3.2";
 
-function getAzureConfig() {
-  const key = process.env.AZURE_SPEECH_KEY;
-  const region = process.env.AZURE_SPEECH_REGION;
-  if (!key || !region) {
-    throw new Error("Missing AZURE_SPEECH_KEY or AZURE_SPEECH_REGION environment variable.");
-  }
+async function getAzureConfig() {
+  const [key, region] = await Promise.all([
+    getApiKey("AZURE_SPEECH_KEY"),
+    getApiKey("AZURE_SPEECH_REGION"),
+  ]);
   return { key, region };
 }
 
@@ -61,7 +61,7 @@ interface AzureTranscriptionResult {
 }
 
 export async function startAzureTranscription(args: { audioUrl: string }): Promise<{ jobRef: string }> {
-  const { key, region } = getAzureConfig();
+  const { key, region } = await getAzureConfig();
 
   const res = await fetch(
     `https://${region}.api.cognitive.microsoft.com/${API_BASE}/transcriptions`,
@@ -107,7 +107,7 @@ export type AzurePollResult =
 
 /** Called from the polling cron route — Azure's batch API has no push callback. */
 export async function pollAzureTranscription(jobRef: string): Promise<AzurePollResult> {
-  const { key } = getAzureConfig();
+  const { key } = await getAzureConfig();
 
   const statusRes = await fetch(jobRef, { headers: { "Ocp-Apim-Subscription-Key": key } });
   if (!statusRes.ok) {

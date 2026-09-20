@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireUser } from "@/lib/supabase/server";
 import { exportFormatSchema } from "@/shared/schemas";
 import { buildSpeakerNameMap, resolveSpeakerName } from "@/shared/speaker-name";
 import { toTxt } from "@/lib/export/txt";
@@ -24,9 +24,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const format = parsedFormat.data;
 
+  const user = await requireUser();
   const supabase = createServiceClient();
   const [meetingRes, utterancesRes, minutesRes, actionItemsRes, participantsRes] = await Promise.all([
-    supabase.from("meetings").select("title, meeting_date").eq("id", id).maybeSingle(),
+    supabase.from("meetings").select("title, meeting_date").eq("id", id).eq("user_id", user.id).maybeSingle(),
     supabase.from("utterances").select("*").eq("meeting_id", id).order("sequence"),
     supabase.from("minutes").select("*").eq("meeting_id", id).maybeSingle(),
     supabase.from("action_items").select("*").eq("meeting_id", id),
