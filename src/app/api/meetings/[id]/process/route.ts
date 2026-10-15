@@ -9,6 +9,7 @@ import { transcribeWithGemini } from "@/lib/ai/transcribe-gemini";
 import { finalizeTranscript } from "@/lib/ai/finalize-transcript";
 import { transcriptionModelOptions, type TranscriptionProvider } from "@/shared/schemas";
 import { jsonError, notFound } from "@/lib/api-response";
+import { signMeetingId } from "@/lib/webhook-token";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -54,7 +55,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (provider === "deepgram") {
       // Deepgram pushes the result to our webhook once done — nothing more
       // to do here than kick the job off.
-      const callbackUrl = `${appUrl}/api/webhooks/deepgram?meetingId=${id}`;
+      const callbackUrl = `${appUrl}/api/webhooks/deepgram?meetingId=${id}&token=${signMeetingId(id)}`;
       await startTranscription({ audioUrl, callbackUrl, model: meeting.transcription_model });
     } else if (provider === "azure") {
       // Azure's batch API has no push callback; the poll cron
