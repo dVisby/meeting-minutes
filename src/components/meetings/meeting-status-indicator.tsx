@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ReprocessMeetingButton } from "@/components/meetings/reprocess-meeting-button";
 
 const LABELS: Record<string, string> = {
   pending: "Bekliyor",
@@ -36,7 +37,16 @@ const STALE_THRESHOLD_MS = 10 * 60 * 1000;
  * for the meeting's status and refresh the server-rendered data as soon as
  * it changes, with a spinner so it's visibly still working in the meantime.
  */
-export function MeetingStatusIndicator({ status, updatedAt }: { status: string; updatedAt: string }) {
+export function MeetingStatusIndicator({
+  status,
+  updatedAt,
+  meetingId,
+}: {
+  status: string;
+  updatedAt: string;
+  /** When given, a stuck (stale) meeting gets a retry button — the page only renders one for failed/pending. */
+  meetingId?: string;
+}) {
   const router = useRouter();
   const isActive = ACTIVE_STATUSES.has(status);
   const [isStale, setIsStale] = useState(false);
@@ -78,6 +88,7 @@ export function MeetingStatusIndicator({ status, updatedAt }: { status: string; 
           İşlem uzun süredir ilerlemiyor — yeniden deneyin veya silin.
         </p>
       )}
+      {isStale && meetingId && status !== "pending" && <ReprocessMeetingButton meetingId={meetingId} />}
     </div>
   );
 }

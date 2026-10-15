@@ -91,7 +91,7 @@ export default async function MeetingDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <MeetingStatusIndicator status={meeting.status} updatedAt={meeting.updated_at} />
+          <MeetingStatusIndicator status={meeting.status} updatedAt={meeting.updated_at} meetingId={id} />
           {(meeting.status === "failed" || meeting.status === "pending") && (
             <ReprocessMeetingButton meetingId={id} />
           )}
