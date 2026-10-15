@@ -11,11 +11,15 @@ export const maxDuration = 300;
  * check on any meeting whose job is still in flight.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.CRON_SECRET) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Fail closed: without CRON_SECRET anyone could trigger this route, so only
+  // skip the check in local development.
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    if (request.headers.get("authorization") !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+  } else if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 500 });
   }
 
   const supabase = createServiceClient();
